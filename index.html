@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>양구군농업기술센터 지능형 비료사용처방 서비스</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M 32 4 Q 32 32, 4 32 Q 32 32, 32 60 Q 32 32, 60 32 Q 32 32, 32 4 Z' fill='%236f4e37'/></svg>">
+  
+  <!-- SEO 메타 태그 -->
+  <meta name="description" content="양구군 농민을 위한 초간편 터치 기반 토양 분석 및 맞춤형 비료 처방 안내 서비스입니다. 처방서 사진을 업로드하고 음성 가이드와 함께 처방 결과를 확인해 보세요.">
+  <meta name="keywords" content="양구군농업기술센터, 토양분석, 비료사용처방, 시비가이드, 스마트농업">
+  
+  <!-- 프리미엄 폰트: Noto Sans KR, Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <!-- 아이콘 라이브러리 (Font Awesome) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 메인 스타일시트 -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- html2canvas (처방서 다운로드용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  
+  <!-- PDF.js 라이브러리 (미리보기용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <!-- 메인 애플리케이션 스크립트 -->
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- 우측 상단 토양 시료 채취 방법 고정 버튼 -->
+  <button type="button" id="show-sampling-btn" class="sampling-guide-btn">
+    <i class="fa-solid fa-map"></i> 시료채취방법
+  </button>
+  <!-- 우측 상단 처방서 다운로드 링크 버튼 -->
+  <a href="https://soil.rda.go.kr/sibi/sibiPrescriptExcel.do" target="_blank" rel="noopener noreferrer" class="download-prescript-btn">
+    <i class="fa-solid fa-file-pdf"></i> 처방서 다운로드받기
+  </a>
+
+  <!-- [1단계] 접속 공지 모달창 (시료 채취 안내) -->
+  <div id="notice-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <img src="https://www.yanggu.go.kr/img/common/logo.png" alt="양구군 로고" class="ygu-logo" onerror="this.style.display='none'">
+        <h2>양구군농업기술센터</h2>
+        <span class="badge">필독 공지</span>
+      </div>
+      
+      <div class="modal-body">
+        <h3>🌱 올바른 토양 시료 채취 안내</h3>
+        <p class="modal-sub">처방서 분석 전에 올바른 방법으로 흙을 채취하셨는지 확인해 주세요. 잘못 채취된 시료는 분석 오차가 발생할 수 있습니다.</p>
+        
+        <div class="guideline-list">
+          <div class="guideline-item">
+            <span class="number-badge danger">1</span>
+            <p><strong>겉흙 걷어내기:</strong> 풀이나 이물질이 섞인 겉흙 <strong>2~3cm</strong>는 긁어내 버립니다.</p>
+          </div>
+          <div class="guideline-item">
+            <span class="number-badge success">2</span>
+            <p><strong>V자 채취:</strong> 삽으로 V자 구덩이를 파고 옆면 흙을 <strong>15~20cm 깊이</strong>로 긁어 담습니다.</p>
+          </div>
+          <div class="guideline-item">
+            <span class="number-badge info">3</span>
+            <p><strong>혼합 및 건조:</strong> 필지당 5~10곳의 흙을 섞어 그늘에서 말린 뒤 봉투에 담아 기술센터에 의뢰합니다.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button id="close-modal-btn" class="large-btn animate-pulse">
+          👍 예, 확인했습니다 (서비스 입장)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- [추가] 토양 시료채취 방법 이미지 모달 -->
+  <div id="sampling-image-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 style="display: inline-flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-leaf" style="color: var(--color-primary-light);"></i>
+          토양 시료 채취 방법
+        </h2>
+        <button type="button" id="close-sampling-modal-btn" class="close-x-btn" style="background:none; border:none; font-size: 28px; color: #999; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="illustration-container" style="margin-bottom: 0;">
+          <img src="시료채취방법.png" alt="올바른 토양 시료 채취 방법" class="sampling-svg">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 레이아웃 -->
+  <div class="container">
+    
+    <!-- 상단 브랜드 탑바 -->
+    <div class="brand-header">
+      <span class="brand-name" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg viewBox="0 0 64 64" style="width: 22px; height: 22px; display: inline-block;">
+          <path d="M 32 4 Q 32 32, 4 32 Q 32 32, 32 60 Q 32 32, 60 32 Q 32 32, 32 4 Z" fill="#6f4e37"/>
+        </svg>
+        Soil<span class="brand-accent">2</span>Gemini
+      </span>
+    </div>
+    
+    <!-- 헤더 -->
+    <header class="app-header">
+      <div class="header-logo" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 64 64" style="width: 36px; height: 36px; display: inline-block;">
+          <path d="M 32 4 Q 32 32, 4 32 Q 32 32, 32 60 Q 32 32, 60 32 Q 32 32, 32 4 Z" fill="#6f4e37"/>
+        </svg>
+        <h1>양구군농업기술센터</h1>
+      </div>
+      <h2>지능형 비료사용처방 서비스</h2>
+      <p class="header-desc">글자 입력 없이 터치만으로 종이 처방서를 분석하고 쉬운 비료 처방을 해드립니다.</p>
+    </header>
+
+
+    <!-- [1단계] 작물 선택 및 이미지 업로드 패널 -->
+    <section class="card upload-section">
+      <h3 class="section-title"><span class="step-badge">1단계</span> 밭에 심을 작물을 선택해 주세요</h3>
+      
+      <!-- 대형 작물 선택 버튼 (터치 기반) -->
+      <div class="crop-grid">
+        <button type="button" class="crop-card" data-crop="아스파라거스">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M30 56V20c0-3 2-6 2-6s2 3 2 6v36z" fill="#2d6a4f"/>
+              <path d="M32 14l-2 3 4 0zM32 22l-3 4 6 0zM32 30l-3 4 6 0z" fill="#52b788"/>
+              <path d="M22 56V28c0-3 2-6 2-6s2 3 2 6v28z" fill="#40916c"/>
+              <path d="M24 22l-2 3 4 0zM24 30l-3 4 6 0zM24 38l-3 4 6 0z" fill="#74c69d"/>
+              <path d="M38 56V34c0-3 2-6 2-6s2 3 2 6v22z" fill="#1b4332"/>
+              <path d="M40 28l-2 3 4 0zM40 36l-3 4 6 0zM40 44l-3 4 6 0z" fill="#2d6a4f"/>
+            </svg>
+          </span>
+          <span class="crop-name">아스파라거스</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="시래기">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <line x1="16" y1="12" x2="48" y2="12" stroke="#8d6e63" stroke-width="3" stroke-linecap="round"/>
+              <path d="M32 12V6" stroke="#8d6e63" stroke-width="2" fill="none"/>
+              <path d="M24 12c-4 12-4 28 8 38 0-12-2-26-8-38z" fill="#707a38"/>
+              <path d="M40 12c4 12 4 28-8 38 0-12 2-26 8-38z" fill="#58602b"/>
+              <path d="M32 12c-3 12-3 32 0 42 3-10 3-30 0-42z" fill="#8c9945"/>
+              <rect x="25" y="22" width="14" height="4" rx="2" fill="#d9a05b"/>
+            </svg>
+          </span>
+          <span class="crop-name">시래기</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="사과">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M32 18c-3-2-8-2-12 0-5 3-7 8-7 14 0 10 7 18 19 18s19-8 19-18c0-6-2-11-7-14-4-2-9-2-12 0z" fill="#e63946"/>
+              <path d="M32 16c0-5 4-8 6-8" stroke="#6f4e37" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+              <path d="M34 11c3-2 6-2 8-1-1 3-3 5-6 5s-2-2-2-4z" fill="#2d6a4f"/>
+            </svg>
+          </span>
+          <span class="crop-name">사과</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="멜론">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <circle cx="32" cy="36" r="20" fill="#a7c957"/>
+              <path d="M19 26c6 4 20 4 26 0M15 36c8 5 26 5 34 0M19 46c6 4 20 4 26 0" stroke="#f4f7f4" stroke-width="2" fill="none" opacity="0.8"/>
+              <path d="M19 26c4 6 4 20 0 26M32 16c5 8 5 26 0 34M45 26c-4 6-4 20 0 26" stroke="#f4f7f4" stroke-width="2" fill="none" opacity="0.8"/>
+              <path d="M32 16c0-5-2-7-5-7" stroke="#6f4e37" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M29 9c3 0 5-2 5-5" stroke="#6f4e37" stroke-width="3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">멜론</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="고추">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M34 10c-2-3-6-2-6-2s1 3 2 5" stroke="#2d6a4f" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M22 15c8-1 16 1 18 4 1 8-5 22-12 33-1 2-3 4-4 4s1-8 2-14c1-6-1-18-4-27z" fill="#d90429"/>
+            </svg>
+          </span>
+          <span class="crop-name">고추</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="곰취">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M32 50c-15 0-22-12-20-24C14 12 24 10 32 16c8-6 18-4 20 10 2 12-5 24-20 24z" fill="#2d6a4f"/>
+              <path d="M32 16v34" stroke="#40916c" stroke-width="2" fill="none"/>
+              <path d="M32 26l-12-6M32 34l-14-4M32 42l-10-2M32 26l12-6M32 34l14-4M32 42l10-2" stroke="#40916c" stroke-width="1.5" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">곰취</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="토마토">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <ellipse cx="32" cy="36" rx="20" ry="18" fill="#f26419"/>
+              <path d="M32 20l2-5 2 5 5-3-3 4 5 1-4 2 1 5-4-3-3 4-1-5-4-2 5-1-3-4 5 3z" fill="#2d6a4f"/>
+              <path d="M32 15c-1-3 2-4 2-4" stroke="#1b4332" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">토마토</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="콩">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M12 32c10-12 30-12 40 0-10 12-30 12-40 0z" fill="#2d6a4f"/>
+              <circle cx="22" cy="32" r="4.5" fill="#74c69d"/>
+              <circle cx="32" cy="32" r="4.5" fill="#74c69d"/>
+              <circle cx="42" cy="32" r="4.5" fill="#74c69d"/>
+            </svg>
+          </span>
+          <span class="crop-name">콩</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="수박">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M12 28c0 14 9 24 20 24s20-10 20-24H12z" fill="#2d6a4f"/>
+              <path d="M15 28c0 12 8 21 17 21s17-9 17-21H15z" fill="#ffccd5"/>
+              <path d="M17 28c0 10 7 19 15 19s15-9 15-19H17z" fill="#ff4d6d"/>
+              <circle cx="26" cy="33" r="1.5" fill="#1a1a1a"/>
+              <circle cx="32" cy="38" r="1.5" fill="#1a1a1a"/>
+              <circle cx="38" cy="33" r="1.5" fill="#1a1a1a"/>
+            </svg>
+          </span>
+          <span class="crop-name">수박</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="양파">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M32 12C20 20 16 30 16 40c0 10 7 16 16 16s16-6 16-16c0-10-4-20-16-28z" fill="#ddb892"/>
+              <path d="M30 56c0 3 2 4 2 4s2-1 2-4" stroke="#b08968" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M32 12c-2-4-5-6-5-6s5 2 5 6" stroke="#40916c" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M24 28c-4 6-4 14 0 20M40 28c4 6 4 14 0 20" stroke="#b08968" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="crop-name">양파</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="팥">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M22 26c0-6 6-10 14-10s12 6 12 12c0 8-6 16-16 16-6 0-10-3-10-7 0-3 3-5 3-7s-3-2-3-4z" fill="#800f2f"/>
+              <path d="M27 28c2 0 4 2 4 4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">팥</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="감자">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M16 34c0-10 8-16 18-16s16 6 16 14-6 16-16 16-18-4-18-14z" fill="#d5bdaf"/>
+              <circle cx="24" cy="28" r="1.5" fill="#a89a90"/>
+              <circle cx="36" cy="24" r="1.5" fill="#a89a90"/>
+              <circle cx="42" cy="36" r="1.5" fill="#a89a90"/>
+              <circle cx="30" cy="40" r="1.5" fill="#a89a90"/>
+            </svg>
+          </span>
+          <span class="crop-name">감자</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="포도">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <circle cx="32" cy="46" r="6" fill="#5a189a"/>
+              <circle cx="26" cy="38" r="6" fill="#7b2cbf"/>
+              <circle cx="38" cy="38" r="6" fill="#7b2cbf"/>
+              <circle cx="20" cy="30" r="6" fill="#9d4edd"/>
+              <circle cx="32" cy="30" r="6" fill="#9d4edd"/>
+              <circle cx="44" cy="30" r="6" fill="#9d4edd"/>
+              <circle cx="26" cy="22" r="6" fill="#c77dff"/>
+              <circle cx="38" cy="22" r="6" fill="#c77dff"/>
+              <path d="M32 16c0-4 2-6 4-6" stroke="#40916c" stroke-width="2" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">포도</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="벼">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M24 56C24 38 32 20 48 20" stroke="#52b788" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+              <circle cx="48" cy="20" r="3.5" fill="#ffb703"/>
+              <circle cx="43" cy="24" r="3.5" fill="#ffb703"/>
+              <circle cx="39" cy="29" r="3.5" fill="#ffb703"/>
+              <circle cx="35" cy="35" r="3.5" fill="#ffb703"/>
+              <circle cx="31" cy="42" r="3.5" fill="#ffb703"/>
+              <circle cx="28" cy="50" r="3.5" fill="#ffb703"/>
+              <circle cx="50" cy="26" r="3" fill="#ffc300"/>
+              <circle cx="45" cy="31" r="3" fill="#ffc300"/>
+              <circle cx="41" cy="37" r="3" fill="#ffc300"/>
+              <circle cx="37" cy="44" r="3" fill="#ffc300"/>
+            </svg>
+          </span>
+          <span class="crop-name">벼</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="인삼">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <circle cx="32" cy="6" r="2" fill="#e63946"/>
+              <circle cx="29" cy="8" r="2" fill="#e63946"/>
+              <circle cx="35" cy="8" r="2" fill="#e63946"/>
+              <path d="M32 8v8" stroke="#2d6a4f" stroke-width="2"/>
+              <path d="M32 12c-4-2-8-1-8-1s4 3 8 1z" fill="#40916c"/>
+              <path d="M32 12c4-2 8-1 8-1s-4 3-8 1z" fill="#40916c"/>
+              <path d="M32 16c-6 0-8 6-8 14 0 8 4 12 4 12s-2 6-4 14c3-2 6-8 6-8s2 6 5 8c-1-6-3-14-3-14s4-4 4-12c0-8-2-14-8-14z" fill="#e5c59e"/>
+              <path d="M27 24c2 1 4 0 4 0" stroke="#bfa380" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+              <path d="M37 28c-2 1-4 0-4 0" stroke="#bfa380" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">인삼</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="옥수수">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M32 14c-6 0-9 8-9 20 0 10 3 18 9 20 6-2 9-10 9-20 0-12-3-20-9-20z" fill="#ffb703"/>
+              <path d="M29 20h6M28 27h8M27 34h10M28 41h8M29 48h6" stroke="#fb8500" stroke-width="2" stroke-linecap="round"/>
+              <path d="M32 16v34" stroke="#fb8500" stroke-width="1.5" stroke-dasharray="2 4"/>
+              <path d="M21 34c2 10 11 18 11 18s-10-6-11-18z" fill="#2d6a4f"/>
+              <path d="M43 34c-2 10-11 18-11 18s10-6 11-18z" fill="#40916c"/>
+            </svg>
+          </span>
+          <span class="crop-name">옥수수</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="오이">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M48 16c2-4 5-5 5-5" stroke="#1b4332" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M16 48c-4-4 0-14 10-24S44 12 48 16s0 14-10 24-20 12-22 8z" fill="#2d6a4f"/>
+              <circle cx="24" cy="38" r="1.5" fill="#74c69d"/>
+              <circle cx="30" cy="30" r="1.5" fill="#74c69d"/>
+              <circle cx="38" cy="24" r="1.5" fill="#74c69d"/>
+            </svg>
+          </span>
+          <span class="crop-name">오이</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="오미자">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <circle cx="32" cy="46" r="4.5" fill="#d90429"/>
+              <circle cx="27" cy="39" r="4.5" fill="#d90429"/>
+              <circle cx="37" cy="39" r="4.5" fill="#d90429"/>
+              <circle cx="22" cy="32" r="4.5" fill="#d90429"/>
+              <circle cx="32" cy="32" r="4.5" fill="#d90429"/>
+              <circle cx="42" cy="32" r="4.5" fill="#d90429"/>
+              <circle cx="27" cy="25" r="4.5" fill="#d90429"/>
+              <circle cx="37" cy="25" r="4.5" fill="#d90429"/>
+              <path d="M32 20V12" stroke="#6f4e37" stroke-width="2" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">오미자</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="들깨">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M32 52c-12 0-18-12-16-24C18 14 26 12 32 18c6-6 14-4 16 10 2 12-4 24-16 24z" fill="#52b788"/>
+              <path d="M32 18v34" stroke="#2d6a4f" stroke-width="2" fill="none"/>
+            </svg>
+          </span>
+          <span class="crop-name">들깨</span>
+        </button>
+        <button type="button" class="crop-card" data-crop="대파">
+          <span class="crop-emoji" style="display: inline-flex; align-items: center; justify-content: center; height: 54px;">
+            <svg viewBox="0 0 64 64" style="width: 38px; height: 38px; display: inline-block;">
+              <path d="M30 55c1 3 2 4 2 4s1-1 2-4M28 55c1 2 1 3 1 3M34 55c1 2 1 3 1 3" stroke="#ddb892" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M29 36v19h6V36z" fill="#f8f9fa"/>
+              <path d="M29 26l3 10 3-10z" fill="#b7e4c7"/>
+              <path d="M29 28C22 18 16 8 16 8s6 8 12 16z" fill="#52b788"/>
+              <path d="M35 28C42 18 48 8 48 8s-6 8-12 16z" fill="#2d6a4f"/>
+              <path d="M32 26C32 14 30 6 30 6s4 8 2 20z" fill="#40916c"/>
+            </svg>
+          </span>
+          <span class="crop-name">대파</span>
+        </button>
+      </div>
+
+      <h3 class="section-title margin-top"><span class="step-badge">2단계</span> 종이 처방서 사진 또는 PDF를 올려주세요</h3>
+      
+      <!-- 이미지 드롭존 / 터치 업로드 영역 -->
+      <div id="drop-zone" class="upload-dropzone">
+        <input type="file" id="file-input" accept="image/jpeg, image/jpg, application/pdf" style="display: none;">
+        <div class="dropzone-content">
+          <i class="fa-solid fa-camera-retro upload-icon"></i>
+          <p class="upload-main-text">처방서 사진 촬영 또는 이미지/PDF 선택</p>
+          <p class="upload-sub-text">5MB 이하의 JPG, PDF 파일만 허용됩니다.</p>
+          <button type="button" id="select-file-btn" class="select-btn">파일 고르기</button>
+        </div>
+        <!-- 선택된 파일 정보 표시 및 미리보기 영역 -->
+        <div id="file-preview-container" class="file-preview-container" style="display: none;">
+          <div class="visual-preview-box">
+            <img id="image-preview" class="preview-img" style="display: none;" alt="이미지 미리보기">
+            <canvas id="pdf-preview-canvas" class="preview-canvas" style="display: none;"></canvas>
+            <div id="pdf-loading-indicator" class="pdf-loading" style="display: none;">
+              <i class="fa-solid fa-spinner fa-spin"></i> 미리보기 불러오는 중...
+            </div>
+          </div>
+          <div class="preview-info-row">
+            <div class="preview-details">
+              <i class="fa-solid fa-image file-icon" id="preview-file-icon"></i>
+              <span id="file-name" class="file-name">파일명.jpg</span>
+              <span id="file-size" class="file-size">(0.0 MB)</span>
+            </div>
+            <button type="button" id="remove-file-btn" class="remove-btn"><i class="fa-solid fa-xmark"></i> 지우기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 처방서 분석 시작 버튼 -->
+      <button type="button" id="analyze-btn" class="action-btn-primary" disabled>
+        <i class="fa-solid fa-wand-magic-sparkles"></i> 토양 처방서 분석 시작하기
+      </button>
+    </section>
+
+    <!-- [2단계] 로딩 인디케이터 -->
+    <div id="loading-spinner" class="spinner-overlay" style="display: none;">
+      <div class="spinner"></div>
+      <p class="loading-text">토양 처방서를 정밀 분석하고 있습니다.<br>잠시만 기다려 주세요...</p>
+    </div>
+
+    <!-- [3단계] 토양 진단 및 처방 결과 섹션 (분석 완료 시 노출) -->
+    <main id="result-section" class="result-area" style="display: none;">
+      
+      <!-- 화면 캡처 대상 카드 (결과 요약 및 처방 세션) -->
+      <div id="capture-area" class="capture-container">
+        
+        <!-- 처방 가이드 공식 배너 -->
+        <div class="result-badge-banner">
+          <div class="banner-title">
+            <i class="fa-solid fa-file-invoice-seedling"></i>
+            <span>양구군농업기술센터 지능형 비료 처방 결과</span>
+          </div>
+          <div id="result-crop-title" class="banner-crop">아스파라거스 처방전</div>
+        </div>
+
+        <!-- 3-1. 초기 종합 진단 화면 -->
+        <section class="card summary-diagnosis-card">
+          <!-- 종합 요약 진단 박스 -->
+          <div class="summary-box">
+            <div class="summary-box-header">
+              <i class="fa-solid fa-square-poll-vertical summary-box-icon"></i>
+              <span class="summary-box-title">내 땅 종합 처방 요약</span>
+            </div>
+            <div class="summary-box-sub" id="summary-farmer-info">농가님의 토양 분석 결과입니다.</div>
+            <ul class="summary-box-list">
+              <li id="bullet-level"><strong>비료 시비 수준:</strong> 분석 중...</li>
+              <li id="bullet-nutrient"><strong>핵심 양분 안내:</strong> 분석 중...</li>
+              <li id="bullet-ph"><strong>토양 산도 (pH):</strong> 분석 중...</li>
+              <li id="bullet-phosphate"><strong>유효인산:</strong> 분석 중...</li>
+            </ul>
+            <div class="summary-box-tts-bar">
+              <button type="button" class="tts-small-btn" id="summary-tts-btn">
+                <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+              </button>
+            </div>
+          </div>
+
+          <!-- 구체적 개별 성분 대시보드 -->
+          <div class="detailed-dashboard">
+            <h4 class="dashboard-title"><i class="fa-solid fa-chart-simple"></i> 내 땅 성분별 분석 결과</h4>
+            <div class="metrics-grid" id="metrics-container">
+              <!-- JS에서 동적으로 생성됨 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 아코디언 처방 안내 세션 -->
+        <div class="accordion-section">
+          <!-- 아코디언 1 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="1">
+              <span class="trigger-text"><span class="trigger-num">1</span> 🔍 내 땅 건강 상태 쉽게 보기</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-1">
+              <div class="content-inner">
+                <div class="tts-bar">
+                  <button type="button" class="tts-action-btn" data-tts-parent="1">
+                    <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+                  </button>
+                </div>
+                <div class="section-loader" style="display: none;">
+                  <div class="small-spinner"></div>
+                  <span>처방을 분석하는 중...</span>
+                </div>
+                <div class="section-body-text" id="section-content-1"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 아코디언 2 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="2">
+              <span class="trigger-text"><span class="trigger-num">2</span> 🛒 내 땅에 필요한 비료 종류 & 포대 수</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-2">
+              <div class="content-inner">
+                <div class="tts-bar">
+                  <button type="button" class="tts-action-btn" data-tts-parent="2">
+                    <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+                  </button>
+                </div>
+                <div class="section-loader" style="display: none;">
+                  <div class="small-spinner"></div>
+                  <span>처방을 분석하는 중...</span>
+                </div>
+                <div class="section-body-text" id="section-content-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 아코디언 3 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="3">
+              <span class="trigger-text"><span class="trigger-num">3</span> 📅 비료는 언제 어떻게 주나요? (살포 시기)</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-3">
+              <div class="content-inner">
+                <div class="tts-bar">
+                  <button type="button" class="tts-action-btn" data-tts-parent="3">
+                    <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+                  </button>
+                </div>
+                <div class="section-loader" style="display: none;">
+                  <div class="small-spinner"></div>
+                  <span>처방을 분석하는 중...</span>
+                </div>
+                <div class="section-body-text" id="section-content-3"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 아코디언 4 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="4">
+              <span class="trigger-text"><span class="trigger-num">4</span> 🪴 어떤 퇴비를 얼마나 주나요?</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-4">
+              <div class="content-inner">
+                <div class="tts-bar">
+                  <button type="button" class="tts-action-btn" data-tts-parent="4">
+                    <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+                  </button>
+                </div>
+                <div class="section-loader" style="display: none;">
+                  <div class="small-spinner"></div>
+                  <span>처방을 분석하는 중...</span>
+                </div>
+                <div class="section-body-text" id="section-content-4"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 아코디언 5 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="5">
+              <span class="trigger-text"><span class="trigger-num">5</span> ⚠️ 우리 밭에서 가장 조심해야 할 점</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-5">
+              <div class="content-inner">
+                <div class="tts-bar">
+                  <button type="button" class="tts-action-btn" data-tts-parent="5">
+                    <i class="fa-solid fa-volume-high"></i> 🔊 설명 천천히 듣기
+                  </button>
+                </div>
+                <div class="section-loader" style="display: none;">
+                  <div class="small-spinner"></div>
+                  <span>처방을 분석하는 중...</span>
+                </div>
+                <div class="section-body-text" id="section-content-5"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 아코디언 6 -->
+          <div class="accordion-item">
+            <button type="button" class="accordion-trigger" data-section="6">
+              <span class="trigger-text"><span class="trigger-num">6</span> 📱 처방 결과 저장 및 가족에게 보내기</span>
+              <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            <div class="accordion-content" id="section-content-wrapper-6">
+              <div class="content-inner">
+                <div class="share-box">
+                  <p class="share-desc">이 처방 내용을 휴대폰에 사진으로 저장하여 자녀나 이웃에게 바로 보낼 수 있습니다.</p>
+                  <div class="share-buttons">
+                    <button type="button" id="download-btn" class="share-btn download-action">
+                      <i class="fa-solid fa-download"></i> 📷 처방 결과 사진으로 저장하기
+                    </button>
+                  </div>
+                  <div class="tech-center-call">
+                    <p>궁금한 점이 있으시면 기술센터로 전화하세요.</p>
+                    <span class="call-text"><i class="fa-solid fa-phone"></i> 033-480-7682</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3-2. 이상 시료 채취 경고 화면 (EC나 유효인산 비정상 과다 시 노출) -->
+      <div id="anomaly-result-container" class="anomaly-container" style="display: none;">
+        <div class="anomaly-card card">
+          <div class="anomaly-header">
+            <i class="fa-solid fa-circle-exclamation anomaly-icon animate-bounce"></i>
+            <h3>⚠️ 비정상적인 토양 수치가 감지되었습니다!</h3>
+          </div>
+          <div class="anomaly-body">
+            <p class="anomaly-guide-intro">현재 분석된 수치가 자연적인 토양 상태를 크게 벗어나 비정상적으로 높습니다.</p>
+            
+            <div class="detected-values-box">
+              <h5>🚨 감지된 이상 수치</h5>
+              <ul id="anomaly-detected-list">
+                <!-- JS에서 동적으로 이상 성분 노출 -->
+              </ul>
+            </div>
+
+            <div class="anomaly-notice-box">
+              <h4>🌱 잘못 채취된 흙일 확률이 높습니다</h4>
+              <p>비료나 퇴비가 덜 섞인 <strong>겉흙 2~3cm를 긁어내지 않고 채취</strong>했거나, 최근에 비료를 뿌린 직후에 흙을 떠서 보냈을 때 이러한 비정상 수치가 나타납니다.</p>
+              <p class="anomaly-reason-desc">정확한 시비를 위해, 겉흙을 걷어내고 <strong>15~20cm 깊이</strong>에서 다시 흙을 골고루 채취하여 농업기술센터에 재의뢰 하시는 것을 강력히 권장합니다.</p>
+            </div>
+          </div>
+          <div class="anomaly-footer">
+            <button type="button" id="anomaly-restart-btn" class="large-btn anomaly-btn animate-pulse">
+              🔄 겉흙을 걷어내고 다시 채취해 올리겠습니다
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 다시 분석하기 버튼 -->
+      <div class="restart-container">
+        <button type="button" id="restart-btn" class="action-btn-secondary">
+          <i class="fa-solid fa-arrow-rotate-left"></i> 다른 처방서 사진 올리기
+        </button>
+      </div>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="app-footer-bar">
+      <p>© 양구군농업기술센터 친환경종합종합검정실</p>
+      <p>강원도 양구군 양구읍 양남로 319-47 | 전화 033-480-7682</p>
+    </footer>
+    
+  </div>
+
+</body>
+</html>
